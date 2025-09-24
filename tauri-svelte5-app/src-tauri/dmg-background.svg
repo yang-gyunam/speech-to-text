@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="660" height="400" viewBox="0 0 660 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="660" height="400" fill="url(#backgroundGradient)"/>
+  
+  <!-- Header -->
+  <text x="330" y="60" text-anchor="middle" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-size="28" font-weight="600" fill="#1e293b">
+    Speech to Text
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="330" y="85" text-anchor="middle" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-size="16" fill="#64748b">
+    Convert audio files to text using AI
+  </text>
+  
+  <!-- Installation instruction -->
+  <text x="330" y="320" text-anchor="middle" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-size="14" fill="#475569">
+    Drag the app to Applications to install
+  </text>
+  
+  <!-- Arrow pointing to Applications -->
+  <path d="M 400 170 Q 440 170 440 170 L 460 170" stroke="#3b82f6" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+  </defs>
+  
+  <!-- Decorative elements -->
+  <circle cx="100" cy="100" r="3" fill="#e2e8f0" opacity="0.6"/>
+  <circle cx="560" cy="120" r="2" fill="#e2e8f0" opacity="0.4"/>
+  <circle cx="80" cy="300" r="2" fill="#e2e8f0" opacity="0.5"/>
+  <circle cx="580" cy="320" r="3" fill="#e2e8f0" opacity="0.3"/>
+</svg>

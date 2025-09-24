@@ -1,0 +1,42 @@
+# Include documentation files
+include README.md
+include INSTALLATION.md
+include EXAMPLES.md
+include TROUBLESHOOTING.md
+include LICENSE
+include CHANGELOG.md
+
+# Include configuration files
+include requirements.txt
+include pyproject.toml
+include setup.py
+include Makefile
+
+# Include setup scripts
+include setup_env.sh
+
+# Include package data
+recursive-include src/speech_to_text *.py
+include src/speech_to_text/py.typed
+
+# Include tests (for source distributions)
+recursive-include tests *.py
+
+# Include examples
+recursive-include examples *.py
+
+# Exclude unnecessary files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude .git*
+global-exclude .coverage
+global-exclude htmlcov/*
+global-exclude logs/*
+global-exclude output/*
+global-exclude venv/*
+global-exclude .pytest_cache/*
+global-exclude *.egg-info/*

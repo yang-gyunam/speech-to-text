@@ -1,0 +1,18 @@
+# Core dependencies
+openai-whisper>=20231117
+pydub>=0.25.1
+click>=8.1.0
+pyyaml>=6.0
+
+# Audio processing
+ffmpeg-python>=0.2.0
+
+# Development dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.0.0
+
+# Type checking
+mypy>=1.5.0
+types-click>=7.1.8

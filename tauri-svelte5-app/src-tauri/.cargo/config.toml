@@ -1,0 +1,32 @@
+# Cargo configuration for optimized builds
+
+[build]
+# Use all available CPU cores for compilation (0 means auto-detect, but we'll use a reasonable default)
+# jobs = 0 is invalid, so we'll let Cargo auto-detect or use system default
+
+# Target-specific optimizations (commented out for development)
+# Uncomment for release builds only
+# [target.x86_64-apple-darwin]
+# rustflags = ["-C", "target-cpu=native"]
+
+# [target.aarch64-apple-darwin] 
+# rustflags = ["-C", "target-cpu=native"]
+
+[profile.release]
+# Release profile optimizations
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+debug = false
+
+[profile.release-with-debug]
+# Release with debug info for profiling
+inherits = "release"
+debug = true
+strip = false
+
+[env]
+# Environment variables for build
+MACOSX_DEPLOYMENT_TARGET = "12.0"

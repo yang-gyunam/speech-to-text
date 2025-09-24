@@ -1,0 +1,240 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'beta'
+        type: choice
+        options:
+          - beta
+          - release
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Build frontend
+        run: npm run build
+
+  build-macos:
+    name: Build macOS
+    needs: test
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [x86_64-apple-darwin, aarch64-apple-darwin]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import Code-Signing Certificates
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: Apple-Actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Build Tauri App
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
+            export MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)
+          fi
+          npm run tauri build -- --target ${{ matrix.target }}
+
+      - name: Notarize macOS App
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Find the .app bundle
+          APP_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/macos -name "*.app" | head -1)
+          if [ -n "$APP_PATH" ]; then
+            echo "Notarizing $APP_PATH"
+            xcrun notarytool submit "$APP_PATH" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_ID_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            
+            # Staple the notarization
+            xcrun stapler staple "$APP_PATH"
+          fi
+
+      - name: Create DMG
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: |
+          # Install create-dmg
+          npm install -g create-dmg
+          
+          # Find the .app bundle
+          APP_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/macos -name "*.app" | head -1)
+          
+          if [ -n "$APP_PATH" ]; then
+            APP_NAME=$(basename "$APP_PATH" .app)
+            
+            # Create DMG
+            create-dmg \
+              --volname "$APP_NAME" \
+              --volicon "src-tauri/icons/icon.icns" \
+              --window-pos 200 120 \
+              --window-size 660 400 \
+              --icon-size 100 \
+              --icon "$APP_NAME.app" 180 170 \
+              --hide-extension "$APP_NAME.app" \
+              --app-drop-link 480 170 \
+              --hdiutil-quiet \
+              "src-tauri/target/${{ matrix.target }}/release/bundle/macos/$APP_NAME.dmg" \
+              "$APP_PATH"
+          fi
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.dmg
+          retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: [test, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release Notes
+        id: release_notes
+        run: |
+          # Extract version from tag
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Generate release notes
+          cat > release_notes.md << EOF
+          # Speech to Text v$VERSION
+          
+          ## What's New
+          - Improved audio processing performance
+          - Enhanced user interface
+          - Bug fixes and stability improvements
+          
+          ## Installation
+          
+          ### macOS
+          1. Download the DMG file for your architecture:
+             - Intel Macs: \`Speech-to-Text-x86_64.dmg\`
+             - Apple Silicon Macs: \`Speech-to-Text-aarch64.dmg\`
+          2. Open the DMG file
+          3. Drag the app to your Applications folder
+          4. Launch the app from Applications
+          
+          ## System Requirements
+          - macOS 12.0 or later
+          - 4GB RAM minimum, 8GB recommended
+          - 1GB free disk space
+          
+          ## Support
+          If you encounter any issues, please report them on our [GitHub Issues](https://github.com/speechtotext/tauri-gui-app/issues) page.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Speech to Text v${{ steps.release_notes.outputs.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'

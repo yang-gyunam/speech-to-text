@@ -1,0 +1,10 @@
+export { tauriService, type TauriService } from './tauriService';
+export { processingService, ProcessingService, type ProcessingCallbacks } from './processingService';
+export { fileService, FileService, type FileValidationResult } from './fileService';
+export { workflowService, WorkflowService, type WorkflowCallbacks, type WorkflowState } from './workflowService';
+export { batchWorkflowService, BatchWorkflowService, type BatchCallbacks, type BatchProgress, type BatchFileStatus } from './batchWorkflowService';
+export { MacOSIntegrationService, type NotificationOptions, type DockBadgeInfo, type FileAssociationStatus } from './macosIntegrationService';
+export { workerService, type WorkerServiceOptions } from './workerService';
+export { queueManager, type QueueItem, type QueueStats, type QueueManagerOptions } from './queueManager';
+export { historyService, type HistoryItem, type RecentFile, type HistoryStats, type HistoryFilter } from './historyService';
+export { profilesService, type ProcessingProfile, type ProfileStats } from './profilesService';
